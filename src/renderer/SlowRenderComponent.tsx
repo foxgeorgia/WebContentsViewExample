@@ -44,7 +44,7 @@ function SlowRenderComponent({
       <textarea
         value={text}
         onChange={handleTextChange}
-        onFocus={onFocus
+        onFocus={onFocus}
         onBlur={onBlur}
         style={{
           marginRight: '10px',
