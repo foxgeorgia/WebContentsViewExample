@@ -4,7 +4,8 @@ import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 export type Channels =
   | 'ipc-example'
   | 'show-webviews'
-  | 'update-webview-position';
+  | 'update-webview-position'
+  | 'update-zoom-level';
 
 const electronHandler = {
   ipcRenderer: {

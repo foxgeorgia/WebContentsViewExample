@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-function SlowRenderComponent({
-  onFocus,
-  onBlur,
-}: {
-  onFocus: () => void;
-  onBlur: () => void;
-}) {
+function Widget() {
   const [searchParams] = useSearchParams();
 
   const cost = parseInt(searchParams.get('cost') || '100', 10);
+  // const webViewId = searchParams.get('id');
+
   const [counter, setCounter] = useState(1000);
-  const [text, setText] = useState('');
+  const frameCount = 31;
+  const currentFrame = counter % frameCount;
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -22,15 +19,10 @@ function SlowRenderComponent({
       }
 
       setCounter(counter + 1);
-    }, 1000);
+    }, 100);
 
     return () => clearInterval(intervalId as unknown as number);
   }, [counter, cost]);
-
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setText(e.target.value);
-  };
-
   return (
     <div
       style={{
@@ -38,32 +30,22 @@ function SlowRenderComponent({
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
+        overflow: 'hidden',
+        height: '100%',
+        width: '100%',
       }}
     >
-      {/* {counter} */}
-      <textarea
-        value={text}
-        onChange={handleTextChange}
-        onFocus={onFocus}
-        onBlur={onBlur}
-        style={{
-          marginRight: '10px',
-          padding: '10px',
-          height: '40px',
-        }}
-        placeholder="Start typing here..."
-      />
       <img
-        src="/assets/dancing-bear.gif"
-        alt="Loading animation"
+        src={`/assets/dancing-bear-${currentFrame + 1}.png`}
+        alt={`Frame ${currentFrame + 1}`}
         style={{
-          width: '200px',
-          height: '200px',
-          objectFit: 'cover',
+          maxWidth: '100%',
+          maxHeight: '100%',
+          objectFit: 'contain',
         }}
       />
     </div>
   );
 }
 
-export default SlowRenderComponent;
+export default Widget;

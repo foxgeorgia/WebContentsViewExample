@@ -1,46 +1,62 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { ZoomTransform } from 'd3-zoom';
-import SlowRenderComponent from './SlowRenderComponent';
+import Widget from './Widget';
 
 interface DraggableCardProps {
   card: {
+    showImage: any;
     id: string;
     coordinates: { x: number; y: number };
-    type: 'card' | 'webview';
+    type: 'draggableCard';
   };
   canvasTransform: ZoomTransform;
 }
 
 function DraggableCard({ card, canvasTransform }: DraggableCardProps) {
-  const [isFocused, setIsFocused] = useState(false);
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: card.id,
-    disabled: isFocused,
   });
 
   const style = {
     position: 'absolute',
-    top: `${card.coordinates.y}px`,
-    left: `${card.coordinates.x}px`,
+    top: `${card.coordinates.y * canvasTransform.k}px`,
+    left: `${card.coordinates.x * canvasTransform.k}px`,
     transformOrigin: 'top left',
     ...(transform
       ? {
-          transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${canvasTransform.k})`,
+          // drag
+          transform: `translate3d(${transform.x}px, ${transform.y}px, 0px) scale(${canvasTransform.k})`,
         }
       : {
+          // zoom
           transform: `scale(${canvasTransform.k})`,
         }),
-    //zIndex: 1,
+    zIndex: 10,
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      {/* <h4>{card.text}</h4> */}
-      <SlowRenderComponent
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-      />
+    <div
+      id={card.id}
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onPointerDown={(e) => {
+        listeners?.onPointerDown?.(e);
+        e.stopPropagation();
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: 'orange',
+          // backgroundColor: '#00000000',
+          width: '20px',
+          height: '20px',
+        }}
+      >
+        {card.showImage && <Widget />}
+      </div>
     </div>
   );
 }

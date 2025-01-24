@@ -24,7 +24,7 @@ class AppUpdater {
 }
 
 let mainWindow: BrowserWindow | null = null;
-const webViews = new Map();
+const webViews = new Map<string, WebContentsView>();
 
 // Add IPC handler to show WebContents (BrowserView)
 // ipcMain.handle('show-webviews', async (event, cost: number) => {
@@ -37,14 +37,16 @@ const webViews = new Map();
 //     const container = mainWindow.contentView;
 //     container.addChildView(view1);
 //     container.addChildView(view2);
-//     container.addChildView(view3);
+//     // container.addChildView(view3);
 
 //     // Set the bounds for each view (position and size)
-//     view1.setBounds({ x: 0, y: 0, width: 300, height: 300 });
-//     view2.setBounds({ x: 700, y: 0, width: 300, height: 300 });
-//     view3.setBounds({ x: 0, y: 400, width: 300, height: 300 });
+//     view1.setBounds({ x: 0, y: 0, width: 300, height: 230 });
+//     view2.setBounds({ x: 700, y: 0, width: 300, height: 230 });
+//     // view3.setBounds({ x: 0, y: 400, width: 300, height: 300 });
 
-//     // Pass the cost to the URL (if you have a route that can accept a cost parameter)
+//     view1.setBackgroundColor('#00000000');
+//     view2.setBackgroundColor('#00000000');
+
 //     view1.webContents.loadURL(
 //       `http://localhost:1212/#/slowrender?cost=${cost}`,
 //     );
@@ -54,7 +56,6 @@ const webViews = new Map();
 //     view3.webContents.loadURL(
 //       `http://localhost:1212/#/slowrender?cost=${cost}`,
 //     );
-
 //     console.log('Three WebContentsView instances created');
 //     return 'WebContentsView instances created';
 //   }
@@ -63,21 +64,29 @@ const webViews = new Map();
 
 ipcMain.handle('show-webviews', async (event, cost) => {
   if (mainWindow) {
-    const ids = ['webview1'];
-    ids.forEach((id, index) => {
+    const ids = ['card1', 'card2', 'card3'];
+    ids.forEach((id) => {
+      if (webViews.has(id)) return;
       const view = new WebContentsView();
-      const x = index * 300; // Adjust positions dynamically
-      const y = index * 400;
-
       mainWindow?.contentView.addChildView(view);
-      view.setBounds({ x, y, width: 300, height: 300 });
-      view.webContents.loadURL(
-        `http://localhost:1212/#/slowrender?cost=${cost}`,
+
+      if (id === 'card2') {
+        view.webContents.loadURL(`http://localhost:1212/#/widget?cost=${100}`);
+      } else {
+        view.webContents.loadURL(`http://localhost:1212/#/widget?cost=${cost}`);
+      }
+
+      view.setBackgroundColor('#00000000');
+
+      view.webContents.insertCSS(
+        'html, body { overflow: hidden;  background: transparent !important;}',
       );
+      // view.setBounds({ x, y, width: 220, height: 220 });
 
       webViews.set(id, view);
+      console.log(`WebContentsView instances created. ID: ${id}`);
     });
-    return 'WebContentsView instances created';
+    return `WebContentsView instances created`;
   }
   return 'WebContentsView failed';
 });
@@ -88,13 +97,23 @@ ipcMain.on('update-webview-position', (event, { id, coordinates }) => {
     view.setBounds({
       x: coordinates.x,
       y: coordinates.y,
-      width: 300,
-      height: 300,
+      width: 210,
+      height: 210,
     });
-    console.log(`Updated position of ${id} to`, coordinates);
+    // console.log(`Updated position of ${id} to`, coordinates);
   } else {
     console.error(`No WebContentsView found for ID: ${id}`);
   }
+});
+
+// Listen to the zoom level update from renderer
+ipcMain.on('update-zoom-level', (event, { zoomLevel }) => {
+  // For each WebContentsView, update the zoom level based on renderer's zoom
+  const calculatedZoomLevel = Math.log(zoomLevel) / Math.log(1.2);
+  webViews.forEach((view) => {
+    const webContent = view.webContents;
+    webContent.setZoomLevel(calculatedZoomLevel);
+  });
 });
 
 const isDebug =
@@ -122,13 +141,6 @@ const createWindow = async () => {
     await installExtensions();
   }
 
-  const RESOURCES_PATH = app.isPackaged
-    ? path.join(process.resourcesPath, 'assets')
-    : path.join(__dirname, '../../assets');
-
-  const getAssetPath = (...paths: string[]): string => {
-    return path.join(RESOURCES_PATH, ...paths);
-  };
   console.log(
     'Preload script path:',
     path.join(__dirname, '../../.erb/dll/preload.js'),
@@ -137,7 +149,6 @@ const createWindow = async () => {
     show: false,
     width: 1024,
     height: 728,
-    icon: getAssetPath('icon.png'),
     webPreferences: {
       preload: app.isPackaged
         ? path.join(__dirname, 'preload.js')

@@ -1,77 +1,131 @@
-import React, { useEffect, useState } from 'react';
-// import './App.css';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useLayoutEffect,
+  useRef,
+  // useState,
+} from 'react';
+import './App.css';
 import { DndContext, DragEndEvent } from '@dnd-kit/core';
-import { ZoomTransform } from 'd3-zoom';
+import { select } from 'd3-selection';
+import { zoom, ZoomTransform } from 'd3-zoom';
 import DraggableCard from './DraggableCard';
 
 export type Card = {
   id: string;
   coordinates: { x: number; y: number };
-  type: 'card';
+  type: 'draggableCard';
+  showImage: boolean;
 };
 
-export type WebViewCard = {
-  id: string;
-  coordinates: { x: number; y: number };
-  type: 'webview';
-  cost: number;
-};
-
-type Props = {
+export default function MainCanvas({
+  cards,
+  setCards,
+  transform,
+  setTransform,
+}: {
+  cards: Card[];
+  setCards: React.Dispatch<React.SetStateAction<Card[]>>;
   transform: ZoomTransform;
-};
-function MainCanvas({ transform }: Props) {
-  const [cards, setCards] = useState<Card[]>([
-    { id: 'card1', coordinates: { x: 50, y: 50 }, type: 'card' },
-  ]);
-
-  // const [webViewCards, setWebViewCards] = useState<WebViewCard[]>([
-  //   { id: 'webview1', coordinates: { x: 0, y: 0 }, type: 'webview', cost: 100 },
-  // ]);
+  setTransform: (transform: ZoomTransform) => void;
+}) {
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const zoomBehavior = useMemo(() => zoom<HTMLDivElement, unknown>(), []);
+  const updateAndForwardRef = (div: HTMLDivElement | null) => {
+    canvasRef.current = div;
+  };
 
   useEffect(() => {
     const initializeWebViews = async () => {
       // Create WebContentsView in Electron main process
-      await window.electron.ipcRenderer.invoke('show-webviews', 1000000000);
+      await window.electron.ipcRenderer.invoke('show-webviews', 100000000);
     };
-
     initializeWebViews();
   }, []);
 
-  const updateDraggedItemPosition = ({ delta, active }: DragEndEvent) => {
-    if (!delta || !active.id) return;
+  const sendWebViewPosition = async (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      const rect = element.getBoundingClientRect();
+      const coordinates = { x: rect.x, y: rect.y };
+      // Send the updated position to the main process
+      window.electron.ipcRenderer.sendMessage('update-webview-position', {
+        id,
+        coordinates,
+      });
+    }
+  };
 
-    const activeId = String(active.id);
+  // const sendZoomLevel = useCallback(async (zoomLevel: number) => {
+  //   // Send zoom level to main process
+  //   window.electron.ipcRenderer.sendMessage('update-zoom-level', { zoomLevel });
+  // }, []);
 
-    setCards((prev) =>
-      prev.map((item) =>
-        item.id === activeId
+  useEffect(() => {
+    const updateWebViewPositions = async () => {
+      await Promise.all(
+        cards.map(async (card) => {
+          await sendWebViewPosition(card.id);
+        }),
+      );
+    };
+
+    updateWebViewPositions();
+  }, [transform, cards]);
+
+  const updateTransform = useCallback(
+    ({ transform: newTransform }: { transform: ZoomTransform }) => {
+      setTransform(newTransform);
+      // sendZoomLevel(newTransform.k);
+    },
+    [setTransform],
+  );
+
+  useLayoutEffect(() => {
+    if (!canvasRef.current) return;
+
+    // Attach d3-zoom to the canvas
+    zoomBehavior.on('zoom', updateTransform);
+    select(canvasRef.current).call(zoomBehavior);
+  }, [zoomBehavior, updateTransform]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, delta } = event;
+    const activeId = active.id;
+
+    setCards((prevCards) =>
+      prevCards.map((card) =>
+        card.id === activeId
           ? {
-              ...item,
+              ...card,
               coordinates: {
-                x: item.coordinates.x + delta.x,
-                y: item.coordinates.y + delta.y,
+                x: card.coordinates.x + delta.x,
+                y: card.coordinates.y + delta.y,
               },
             }
-          : item,
+          : card,
       ),
     );
   };
 
   return (
-    <DndContext onDragEnd={updateDraggedItemPosition}>
+    <DndContext onDragEnd={handleDragEnd}>
       <div
         id="canvas"
+        ref={canvasRef}
         style={{
           position: 'relative',
           width: '100%',
           height: '100vh',
           overflow: 'hidden',
+          zIndex: 10,
         }}
       >
         <div
+          ref={updateAndForwardRef}
           style={{
-            position: 'absolute',
+            position: 'relative',
             transformOrigin: 'top left',
             transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${transform.k})`,
             width: '100%',
@@ -90,113 +144,3 @@ function MainCanvas({ transform }: Props) {
     </DndContext>
   );
 }
-
-export default MainCanvas;
-
-// import React, { useEffect, useState } from 'react';
-// import { DndContext, DragEndEvent } from '@dnd-kit/core';
-// import DraggableCard from './DraggableCard';
-
-// export type Card = {
-//   id: string;
-//   coordinates: { x: number; y: number };
-//   type: 'card' | 'webview'; // Added a type to distinguish cards
-// };
-
-// function MainCanvas() {
-//   const [elements, setElements] = useState<Card[]>([
-//     { id: 'card1', coordinates: { x: 50, y: 50 }, type: 'card' },
-//   ]);
-
-//   useEffect(() => {
-//     const handleShowWebViews = async () => {
-//       window.electron.ipcRenderer.invoke('show-webviews', 100000000);
-//     };
-//     handleShowWebViews();
-//   }, []);
-
-//   const updateDraggedElementPosition = ({ delta, active }: DragEndEvent) => {
-//     if (!delta || !active.id) return;
-
-//     setElements((prevElements) =>
-//       prevElements.map((element) =>
-//         element.id === active.id
-//           ? {
-//               ...element,
-//               coordinates: {
-//                 x: element.coordinates.x + delta.x,
-//                 y: element.coordinates.y + delta.y,
-//               },
-//             }
-//           : element,
-//       ),
-//     );
-//   };
-
-//   return (
-//     <DndContext onDragEnd={updateDraggedElementPosition}>
-//       <div
-//         style={{
-//           position: 'relative',
-//           width: '100%',
-//           height: '100vh',
-//         }}
-//       >
-//         {elements.map((element) => (
-//           <DraggableCard key={element.id} card={element} />
-//         ))}
-//       </div>
-//     </DndContext>
-//   );
-// }
-
-// export default MainCanvas;
-// import React, { useState } from 'react';
-// import SlowRenderComponent from './SlowRenderComponent';
-// import WebviewToggle from './WebViewToggle';
-
-// function MainCanvas() {
-//   const [isBusy, setIsBusy] = useState(false);
-//   const cost = 100;
-
-//   return (
-//     <div style={{ display: 'flex', alignItems: 'left' }}>
-//       {/* <textarea
-//         value={text}
-//         onChange={handleTextChange}
-//         style={{
-//           marginRight: '10px',
-//           padding: '10px',
-//           height: '40px',
-//         }}
-//         placeholder="Start typing here..."
-//       /> */}
-
-//       <button
-//         type="button"
-//         onClick={() => setIsBusy((prevState) => !prevState)}
-//         style={{
-//           marginRight: '10px',
-//           padding: '10px',
-//           backgroundColor: '#4CAF50',
-//           color: 'white',
-//           height: '50px',
-//           border: 'none',
-//           borderRadius: '4px',
-//         }}
-//       >
-//         {isBusy ? 'Stop Slow Render' : 'Start Slow Render'}
-//       </button>
-//       <WebviewToggle />
-//       {isBusy && (
-//         <div>
-//           <div style={{ marginBottom: '10px' }}>
-//             <SlowRenderComponent cost={cost} />
-//           </div>
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
-
-// export default MainCanvas;
