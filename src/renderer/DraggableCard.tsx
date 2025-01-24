@@ -1,4 +1,3 @@
-import React, { useEffect, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { ZoomTransform } from 'd3-zoom';
 import Widget from './Widget';
@@ -14,34 +13,32 @@ interface DraggableCardProps {
 }
 
 function DraggableCard({ card, canvasTransform }: DraggableCardProps) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+  // attributes, listeners,
+  const { setNodeRef, listeners, transform } = useDraggable({
     id: card.id,
   });
-
-  const style = {
-    position: 'absolute',
-    top: `${card.coordinates.y * canvasTransform.k}px`,
-    left: `${card.coordinates.x * canvasTransform.k}px`,
-    transformOrigin: 'top left',
-    ...(transform
-      ? {
-          // drag
-          transform: `translate3d(${transform.x}px, ${transform.y}px, 0px) scale(${canvasTransform.k})`,
-        }
-      : {
-          // zoom
-          transform: `scale(${canvasTransform.k})`,
-        }),
-    zIndex: 10,
-  };
 
   return (
     <div
       id={card.id}
       ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
+      style={{
+        position: 'absolute',
+        top: `${card.coordinates.y * canvasTransform.k}px`,
+        left: `${card.coordinates.x * canvasTransform.k}px`,
+        transformOrigin: 'top left',
+        ...(transform
+          ? {
+              // drag
+              transform: `translate3d(${transform.x}px, ${transform.y}px, 0px) scale(${canvasTransform.k})`,
+            }
+          : {
+              // zoom
+              transform: `scale(${canvasTransform.k})`,
+            }),
+      }}
+      // {...attributes}
+      // {...listeners}
       onPointerDown={(e) => {
         listeners?.onPointerDown?.(e);
         e.stopPropagation();
@@ -49,10 +46,10 @@ function DraggableCard({ card, canvasTransform }: DraggableCardProps) {
     >
       <div
         style={{
-          backgroundColor: 'orange',
-          // backgroundColor: '#00000000',
-          width: '20px',
-          height: '20px',
+          // backgroundColor: 'orange',
+          backgroundColor: '#00000000',
+          width: '205px',
+          height: '200px',
         }}
       >
         {card.showImage && <Widget />}

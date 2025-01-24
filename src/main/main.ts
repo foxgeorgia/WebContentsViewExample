@@ -9,7 +9,14 @@
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
 import path from 'path';
-import { app, BrowserWindow, shell, ipcMain, WebContentsView } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  session,
+  shell,
+  ipcMain,
+  WebContentsView,
+} from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
@@ -91,20 +98,27 @@ ipcMain.handle('show-webviews', async (event, cost) => {
   return 'WebContentsView failed';
 });
 
-ipcMain.on('update-webview-position', (event, { id, coordinates }) => {
-  const view = webViews.get(id);
-  if (view) {
-    view.setBounds({
-      x: coordinates.x,
-      y: coordinates.y,
-      width: 210,
-      height: 210,
-    });
-    // console.log(`Updated position of ${id} to`, coordinates);
-  } else {
-    console.error(`No WebContentsView found for ID: ${id}`);
-  }
-});
+ipcMain.on(
+  'update-webview-position',
+  (event, { id, coordinates, dimensions }) => {
+    const view = webViews.get(id);
+    if (view) {
+      view.setBounds({
+        x: coordinates.x,
+        y: coordinates.y,
+        width: dimensions.width,
+        height: dimensions.height,
+      });
+      // console.log(
+      //   `Updated position and size of ${id} to`,
+      //   coordinates,
+      //   dimensions,
+      // );
+    } else {
+      console.error(`No WebContentsView found for ID: ${id}`);
+    }
+  },
+);
 
 // Listen to the zoom level update from renderer
 ipcMain.on('update-zoom-level', (event, { zoomLevel }) => {
@@ -190,6 +204,14 @@ const createWindow = async () => {
 /**
  * Add event listeners...
  */
+app.on('ready', async () => {
+  try {
+    await session.defaultSession.clearCache();
+    console.log('Cache cleared');
+  } catch (error) {
+    console.error('Failed to clear cache:', error);
+  }
+});
 
 app.on('window-all-closed', () => {
   // Respect the OSX convention of having the application in memory even

@@ -49,10 +49,13 @@ export default function MainCanvas({
     if (element) {
       const rect = element.getBoundingClientRect();
       const coordinates = { x: rect.x, y: rect.y };
-      // Send the updated position to the main process
+      const dimensions = { width: rect.width, height: rect.height };
+
+      // Send the updated position and size to the main process
       window.electron.ipcRenderer.sendMessage('update-webview-position', {
         id,
         coordinates,
+        dimensions,
       });
     }
   };
