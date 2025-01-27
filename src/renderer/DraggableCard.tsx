@@ -13,8 +13,7 @@ interface DraggableCardProps {
 }
 
 function DraggableCard({ card, canvasTransform }: DraggableCardProps) {
-  // attributes, listeners,
-  const { setNodeRef, listeners, transform } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: card.id,
   });
 
@@ -37,8 +36,8 @@ function DraggableCard({ card, canvasTransform }: DraggableCardProps) {
               transform: `scale(${canvasTransform.k})`,
             }),
       }}
-      // {...attributes}
-      // {...listeners}
+      {...attributes}
+      {...listeners}
       onPointerDown={(e) => {
         listeners?.onPointerDown?.(e);
         e.stopPropagation();

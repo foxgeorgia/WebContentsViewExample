@@ -71,17 +71,13 @@ const webViews = new Map<string, WebContentsView>();
 
 ipcMain.handle('show-webviews', async (event, cost) => {
   if (mainWindow) {
-    const ids = ['card1', 'card2', 'card3'];
+    const ids = ['card1', 'card2'];
     ids.forEach((id) => {
       if (webViews.has(id)) return;
       const view = new WebContentsView();
       mainWindow?.contentView.addChildView(view);
 
-      if (id === 'card2') {
-        view.webContents.loadURL(`http://localhost:1212/#/widget?cost=${100}`);
-      } else {
-        view.webContents.loadURL(`http://localhost:1212/#/widget?cost=${cost}`);
-      }
+      view.webContents.loadURL(`http://localhost:1212/#/widget?cost=${cost}`);
 
       view.setBackgroundColor('#00000000');
 

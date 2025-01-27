@@ -32,7 +32,7 @@ export default function App() {
       id: 'card3',
       coordinates: { x: 0, y: 400 },
       type: 'draggableCard',
-      showImage: false,
+      showImage: true,
     },
   ]);
 
