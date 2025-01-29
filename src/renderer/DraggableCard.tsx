@@ -28,11 +28,9 @@ function DraggableCard({ card, canvasTransform }: DraggableCardProps) {
         transformOrigin: 'top left',
         ...(transform
           ? {
-              // drag
               transform: `translate3d(${transform.x}px, ${transform.y}px, 0px) scale(${canvasTransform.k})`,
             }
           : {
-              // zoom
               transform: `scale(${canvasTransform.k})`,
             }),
       }}
@@ -45,13 +43,13 @@ function DraggableCard({ card, canvasTransform }: DraggableCardProps) {
     >
       <div
         style={{
-          // backgroundColor: 'orange',
-          backgroundColor: '#00000000',
+          backgroundColor: 'orange',
+          // backgroundColor: '#00000000',
           width: '205px',
           height: '200px',
         }}
       >
-        {card.showImage && <Widget />}
+        {card.showImage && <Widget webview={false} />}
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ import DraggableCard from './DraggableCard';
 
 export type Card = {
   id: string;
+  webviewId: string;
   coordinates: { x: number; y: number };
   type: 'draggableCard';
   showImage: boolean;
@@ -36,33 +37,34 @@ export default function MainCanvas({
     canvasRef.current = div;
   };
 
+  // Create WebContentsView in Electron main process
   useEffect(() => {
     const initializeWebViews = async () => {
-      // Create WebContentsView in Electron main process
-      await window.electron.ipcRenderer.invoke('show-webviews', 100000000);
+      if (window.electron && window.electron.ipcRenderer) {
+        await window.electron.ipcRenderer.invoke('show-webviews', 100000000);
+      }
     };
     initializeWebViews();
   }, []);
 
-  const sendWebViewPosition = async (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      const rect = element.getBoundingClientRect();
-      const coordinates = { x: rect.x, y: rect.y };
-      const dimensions = { width: rect.width, height: rect.height };
-      // Send the updated position and size to the main process
-      window.electron.ipcRenderer.sendMessage('update-webview-position', {
-        id,
-        coordinates,
-        dimensions,
-      });
-    }
-  };
-
-  // const sendZoomLevel = useCallback(async (zoomLevel: number) => {
-  //   // Send zoom level to main process
-  //   window.electron.ipcRenderer.sendMessage('update-zoom-level', { zoomLevel });
-  // }, []);
+  // Send the updated position and size to the main process
+  const sendWebViewPosition = useCallback(
+    async (id: string) => {
+      const element = document.getElementById(id);
+      if (element) {
+        const rect = element.getBoundingClientRect();
+        const coordinates = { x: rect.x, y: rect.y };
+        const dimensions = { width: rect.width, height: rect.height };
+        window.electron.ipcRenderer.sendMessage('update-webview-position', {
+          id,
+          coordinates,
+          dimensions,
+          transform,
+        });
+      }
+    },
+    [transform],
+  );
 
   useEffect(() => {
     const updateWebViewPositions = async () => {
@@ -74,20 +76,20 @@ export default function MainCanvas({
     };
 
     updateWebViewPositions();
-  }, [transform, cards]);
+  }, [transform, cards, sendWebViewPosition]);
 
+  // Update zoom transform for native
   const updateTransform = useCallback(
     ({ transform: newTransform }: { transform: ZoomTransform }) => {
       setTransform(newTransform);
-      // sendZoomLevel(newTransform.k);
     },
     [setTransform],
   );
 
+  // Attach d3-zoom to the canvas
   useLayoutEffect(() => {
     if (!canvasRef.current) return;
 
-    // Attach d3-zoom to the canvas
     zoomBehavior.on('zoom', updateTransform);
     select(canvasRef.current).call(zoomBehavior);
   }, [zoomBehavior, updateTransform]);

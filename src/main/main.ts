@@ -33,61 +33,39 @@ class AppUpdater {
 let mainWindow: BrowserWindow | null = null;
 const webViews = new Map<string, WebContentsView>();
 
-// Add IPC handler to show WebContents (BrowserView)
-// ipcMain.handle('show-webviews', async (event, cost: number) => {
-//   if (mainWindow) {
-//     const view1 = new WebContentsView();
-//     const view2 = new WebContentsView();
-//     const view3 = new WebContentsView();
-
-//     // Add views to the window
-//     const container = mainWindow.contentView;
-//     container.addChildView(view1);
-//     container.addChildView(view2);
-//     // container.addChildView(view3);
-
-//     // Set the bounds for each view (position and size)
-//     view1.setBounds({ x: 0, y: 0, width: 300, height: 230 });
-//     view2.setBounds({ x: 700, y: 0, width: 300, height: 230 });
-//     // view3.setBounds({ x: 0, y: 400, width: 300, height: 300 });
-
-//     view1.setBackgroundColor('#00000000');
-//     view2.setBackgroundColor('#00000000');
-
-//     view1.webContents.loadURL(
-//       `http://localhost:1212/#/slowrender?cost=${cost}`,
-//     );
-//     view2.webContents.loadURL(
-//       `http://localhost:1212/#/slowrender?cost=${cost}`,
-//     );
-//     view3.webContents.loadURL(
-//       `http://localhost:1212/#/slowrender?cost=${cost}`,
-//     );
-//     console.log('Three WebContentsView instances created');
-//     return 'WebContentsView instances created';
-//   }
-//   return 'WebContentsView already created or failed';
-// });
-
 ipcMain.handle('show-webviews', async (event, cost) => {
   if (mainWindow) {
     const ids = ['card1', 'card2'];
-    ids.forEach((id) => {
+    ids.forEach((id, index) => {
       if (webViews.has(id)) return;
-      const view = new WebContentsView();
+      const view = new WebContentsView({
+        webPreferences: {
+          preload: path.join(__dirname, 'preload.js'), // ✅ Ensure preload is used
+          contextIsolation: true,
+          nodeIntegration: false,
+        },
+      });
       mainWindow?.contentView.addChildView(view);
 
-      view.webContents.loadURL(`http://localhost:1212/#/widget?cost=${cost}`);
-
-      view.setBackgroundColor('#00000000');
-
-      view.webContents.insertCSS(
-        'html, body { overflow: hidden;  background: transparent !important;}',
+      view.webContents.loadURL(
+        `http://localhost:1212/#/widget?cost=${cost}&webviewId=webview${index + 1}`,
       );
-      // view.setBounds({ x, y, width: 220, height: 220 });
 
+      // view.setBackgroundColor('#00000000');
+      view.setBackgroundColor('yellow');
+
+      view.webContents.insertCSS(`
+        html, body {
+          overflow: hidden;
+          background: transparent !important;
+        }
+      `);
+
+      // view.setBounds({ x, y, width: 220, height: 220 });
       webViews.set(id, view);
+
       console.log(`WebContentsView instances created. ID: ${id}`);
+      view.webContents.openDevTools({ mode: 'detach' });
     });
     return `WebContentsView instances created`;
   }
@@ -96,35 +74,56 @@ ipcMain.handle('show-webviews', async (event, cost) => {
 
 ipcMain.on(
   'update-webview-position',
-  (event, { id, coordinates, dimensions }) => {
+  (event, { id, coordinates, dimensions, transform }) => {
     const view = webViews.get(id);
     if (view) {
+      const scaledWidth = Math.round(dimensions.width * transform.k);
+      const scaledHeight = Math.round(dimensions.height * transform.k);
+
       view.setBounds({
-        x: coordinates.x,
-        y: coordinates.y,
-        width: dimensions.width,
-        height: dimensions.height,
+        x: Math.round(coordinates.x),
+        y: Math.round(coordinates.y),
+        width: scaledWidth,
+        height: scaledHeight,
       });
+
+      view.webContents.setZoomFactor(transform.k);
+
+      console.log(
+        `Sending update-webview-dimensions to webContents ID: ${id}`,
+        {
+          width: scaledWidth,
+          height: scaledHeight,
+        },
+      );
+
+      // Send the updated dimensions to the widget
+      view.webContents.send('update-webview-dimensions', {
+        width: scaledWidth,
+        height: scaledHeight,
+      });
+
       // console.log(
       //   `Updated position and size of ${id} to`,
       //   coordinates,
-      //   dimensions,
+      //   'width: ',
+      //   scaledWidth,
+      //   'height:',
+      //   scaledHeight,
       // );
-    } else {
-      console.error(`No WebContentsView found for ID: ${id}`);
     }
   },
 );
 
 // Listen to the zoom level update from renderer
-ipcMain.on('update-zoom-level', (event, { zoomLevel }) => {
-  // For each WebContentsView, update the zoom level based on renderer's zoom
-  const calculatedZoomLevel = Math.log(zoomLevel) / Math.log(1.2);
-  webViews.forEach((view) => {
-    const webContent = view.webContents;
-    webContent.setZoomLevel(calculatedZoomLevel);
-  });
-});
+// ipcMain.on('update-zoom', (event, data) => {
+//   webViews.forEach((view) => {
+//     const webContent = view.webContents;
+//     if (webContent) {
+//       webContent.setZoomFactor(data.zoomLevel);
+//     }
+//   });
+// });
 
 const isDebug =
   process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
@@ -156,7 +155,6 @@ const createWindow = async () => {
     path.join(__dirname, '../../.erb/dll/preload.js'),
   );
   mainWindow = new BrowserWindow({
-    show: false,
     width: 1024,
     height: 728,
     webPreferences: {

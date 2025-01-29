@@ -7,6 +7,7 @@ import Widget from './Widget';
 
 export type Card = {
   id: string;
+  webviewId: string;
   coordinates: { x: number; y: number };
   type: 'draggableCard';
   showImage: boolean;
@@ -18,18 +19,21 @@ export default function App() {
   const [cards, setCards] = useState<Card[]>([
     {
       id: 'card1',
+      webviewId: 'webview1',
       coordinates: { x: 0, y: 0 },
       type: 'draggableCard',
       showImage: false,
     },
     {
       id: 'card2',
+      webviewId: 'webview2',
       coordinates: { x: 0, y: 200 },
       type: 'draggableCard',
       showImage: false,
     },
     {
       id: 'card3',
+      webviewId: 'webview3',
       coordinates: { x: 0, y: 400 },
       type: 'draggableCard',
       showImage: true,
@@ -50,7 +54,7 @@ export default function App() {
             />
           }
         />
-        <Route path="/widget" element={<Widget />} />
+        <Route path="/widget" element={<Widget webview />} />
       </Routes>
     </HashRouter>
   );

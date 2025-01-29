@@ -1,11 +1,11 @@
-/* eslint no-unused-vars: off */
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 
 export type Channels =
   | 'ipc-example'
   | 'show-webviews'
   | 'update-webview-position'
-  | 'update-zoom-level';
+  | 'update-webview-dimensions'
+  | 'update-zoom';
 
 const electronHandler = {
   ipcRenderer: {
